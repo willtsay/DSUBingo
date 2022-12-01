@@ -44,7 +44,7 @@ public class Bingo : Container
         _httpRequest = new HTTPRequest();
         this.AddChild(_httpRequest);
         _httpRequest.Connect("request_completed", this, "BingoRequestCompleted");
-        var e = _httpRequest.Request("https://raw.githubusercontent.com/willtsay/bingobango/main/bingoEntries2.csv");
+        var e = _httpRequest.Request("https://raw.githubusercontent.com/willtsay/bingobango/main/bingoEntries2.tsv");
         if (e != Error.Ok)
         {
             GD.Print("failed request"); // push?
@@ -81,7 +81,8 @@ public class Bingo : Container
     private void BingoRequestCompleted(int result, int response_code, string[] headers, byte[] body)
     {
         var a = Encoding.UTF8.GetString(body);
-        // populate the dictionary using this csv. 
+        // populate the dictionary using this TSV.
+        // 
         string[] splitArray = a.Split("\n");
         for (int i = 0; i < splitArray.Length; i++)
         {
