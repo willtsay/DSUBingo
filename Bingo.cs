@@ -15,21 +15,41 @@ public class Bingo : Container
     
     HTTPRequest _httpRequest;
     GridContainer _gc;
+    List<Button> _bingoButtons;
     List<Label> _bingoLabels;
+    List<List<Button>> _winConditionChecker;
     Button _generateButton;
     OptionButton _optionButton;
     CheckBox _usingFillButton;
-    List<String> _excludes;
-    System.Collections.Generic.Dictionary<string, List<string>> _nameEntriesJinju;
-    System.Collections.Generic.Dictionary<string, List<string>> _nameEntriesKera;
+
+    // packed scenes
+    PackedScene _ratJammy;
+
+    // jammy rain
+
+    float rainDelay = 0.3f;
+    float timeUntilRain = 0;
+
+
+
+    [Signal]
+    public delegate void NotWin();
+
+    bool _SimpleWin;
+    bool _SecretWin;
+
     System.Collections.Generic.Dictionary<string, List<string>> _nameEntries;
     Random _rng;
+    RandomNumberGenerator _fRng;
     string _mainExclude;
     private List<string> _freeSpaceEntries;
 
     public override void _Ready()
     {
         _rng = new Random();
+        _fRng = new RandomNumberGenerator();
+        _SimpleWin = false;
+        _SecretWin = false;
         _nameEntries = new System.Collections.Generic.Dictionary<string, List<string>>();
         SetupHttpRequest();
         _gc = GetNode<GridContainer>("HBoxContainer/GridContainer");
@@ -37,7 +57,8 @@ public class Bingo : Container
         _generateButton = GetNode<Button>("HBoxContainer/PanelContainer/VBoxContainer/Button");
         _generateButton.Connect("pressed", this, "GenerateBingo");
 
-        _excludes = new List<String>();
+        _ratJammy = ResourceLoader.Load<PackedScene>("res://RatJammy.tscn");
+
         // generate dummy slots in the gridcontainer
         MakeEmptyBingoBoard();
         PopulateOptionButton();
@@ -59,9 +80,11 @@ public class Bingo : Container
     {
         var bingoButton = ResourceLoader.Load<PackedScene>("res://BingoButton.tscn");
         _bingoLabels = new List<Label>();
+        _bingoButtons = new List<Button>();
         for (int i=0; i<25; i ++)
         {
-            Button newButton = (Button) bingoButton.Instance();
+            Button newButton = (Button)bingoButton.Instance();
+            newButton.Connect("pressed", this, "CheckWinCondition");
             Label newLabel = newButton.GetChild<Label>(0);
             if (i == 12)
             {
@@ -69,9 +92,105 @@ public class Bingo : Container
                 newButton.Pressed = true;
             }
             _bingoLabels.Add(newLabel);
+            _bingoButtons.Add(newButton);
             _gc.AddChild(newButton);
         }
+        
+        // make win condition checker;
+        _winConditionChecker = new List<List<Button>>();
+
+        // first 2 elements are reserved for the diagonals
+        _winConditionChecker.Add(new List<Button>());
+        _winConditionChecker.Add(new List<Button>());
+
+        for (int i =0; i < 5; i++)
+        {
+            _winConditionChecker[0].Add(_bingoButtons[i*6]);
+            _winConditionChecker[1].Add(_bingoButtons[20 - i*4]);
+            List<int> horizontalRange = Enumerable.Range(0, 5).ToList();
+            List<Button> rowList = new List<Button>();
+            List<Button> colList = new List<Button>();
+            horizontalRange.ForEach(x =>
+            {
+                rowList.Add(_bingoButtons[x + 5 * i]);
+                colList.Add(_bingoButtons[x * 5 + i]);
+            });
+            _winConditionChecker.Add(rowList);
+            _winConditionChecker.Add(colList);
+        }
     }
+
+    private void CheckWinCondition()
+    {
+        bool _SecretWinChecker = true;
+        foreach (var btnList in _winConditionChecker)
+        {
+            bool isWin = true;
+            foreach (var btn in btnList)
+            {
+                isWin = isWin && btn.Pressed;
+                _SecretWinChecker = _SecretWinChecker && btn.Pressed;
+            }
+            if (isWin && _SimpleWin != true)
+            {
+                _SimpleWin = isWin;
+            }
+        }
+        if (!_SimpleWin)
+        {
+            this.EmitSignal("NotWin");
+        }
+        _SecretWin = _SecretWinChecker;
+    }
+
+    public override void _Process(float delta)
+    {
+        if (_SimpleWin)
+        {
+            timeUntilRain -= delta;
+            if (timeUntilRain <= 0) 
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    Timer ratTimer = new Timer();
+                    ratTimer.WaitTime = _fRng.RandfRange(0.5f, 1.0f);
+                    ratTimer.Connect("timeout", this, "spawnRatJammy", new Godot.Collections.Array(i, ratTimer));
+                    ratTimer.OneShot = true;
+                    this.AddChild(ratTimer);
+                    ratTimer.Start();
+                }
+                timeUntilRain += rainDelay;
+            }
+        }
+    }
+
+    private void spawnRatJammy(int i, Timer ratTimer)
+    {
+        //pick a spot based on the RNG... i should be 1280/10 -> 128 pixels and then i guess shift it +/-  
+        i -= 1;
+
+        RatJammy newRatJammy = (RatJammy)_ratJammy.Instance();
+        newRatJammy.Position += new Vector2(i * 128 + _rng.Next(-100, 100), 0);
+        newRatJammy.Speed += _rng.Next(-50, 150);
+
+        // as long as the direction is "down and to the right" 
+        // a 45 degree angle is 1,1 so like i guess i can just do a random + random and then normalize the direction
+        var dir = new Vector2(_fRng.Randf(), _fRng.Randf());
+        newRatJammy.direction = dir.Normalized();
+        this.Connect("NotWin", newRatJammy, "despawn");
+        AnimatedSprite sprite = (AnimatedSprite)newRatJammy.GetChild(0);
+        if (_SecretWin)
+        {
+            sprite.Play("ToxicSpin");
+        } else
+        {
+            sprite.Play("default");
+        }
+
+
+        this.AddChild(newRatJammy);
+    }
+
 
     private void PopulateOptionButton()
     {
@@ -154,7 +273,6 @@ public class Bingo : Container
         }
 
     }
-
 
     // make sure this matches the csv u plop up.. test commas i guess. 
     enum Ppl
