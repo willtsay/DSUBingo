@@ -34,7 +34,7 @@ public class RatJammy : KinematicBody2D
         this.MoveAndSlide(Speed * direction);
 
         // as long as the rat jammies are always falling "down"this queuefree should be fine
-        if (this.Position.y > 720 + 48)
+        if (this.Position.y > 2000)
         {
             QueueFree();
         }
