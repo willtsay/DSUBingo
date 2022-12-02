@@ -123,6 +123,7 @@ public class Bingo : Container
     private void CheckWinCondition()
     {
         bool _SecretWinChecker = true;
+        bool _alreadyWon = false;
         foreach (var btnList in _winConditionChecker)
         {
             bool isWin = true;
@@ -131,16 +132,19 @@ public class Bingo : Container
                 isWin = isWin && btn.Pressed;
                 _SecretWinChecker = _SecretWinChecker && btn.Pressed;
             }
-            if (isWin && _SimpleWin != true)
+            if (isWin && !_alreadyWon)
             {
-                _SimpleWin = isWin;
+                _alreadyWon = true;
             }
         }
-        if (!_SimpleWin)
+        if (!_alreadyWon)
         {
-            this.EmitSignal("NotWin");
+            _SimpleWin = false;
+        } else
+        {
+            _SimpleWin = _alreadyWon;
+            _SecretWin = _SecretWinChecker;
         }
-        _SecretWin = _SecretWinChecker;
     }
 
     public override void _Process(float delta)
@@ -222,6 +226,8 @@ public class Bingo : Container
 
     private void GenerateBingo()
     {
+        _SimpleWin = false;
+        _SecretWin = false;
         List<KeyValuePair<string, List<string>>> allowedEntries = null;
 
         // remove jinju specific OR kera specific from the pool.
