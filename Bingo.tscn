@@ -1,7 +1,12 @@
-[gd_scene load_steps=3 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://Bingo.cs" type="Script" id=1]
 [ext_resource path="res://BingoTheme.tres" type="Theme" id=2]
+[ext_resource path="res://SpriteStuff/RatJail.tscn" type="PackedScene" id=3]
+[ext_resource path="res://SpriteStuff/RatJailBG.png" type="Texture" id=4]
+
+[sub_resource type="RectangleShape2D" id=1]
+extents = Vector2( 277.25, 160.5 )
 
 [node name="Container" type="Container"]
 anchor_right = 1.0
@@ -18,40 +23,72 @@ margin_right = 40.0
 margin_bottom = 40.0
 
 [node name="GridContainer" type="GridContainer" parent="HBoxContainer"]
-margin_bottom = 122.0
+margin_bottom = 145.0
 columns = 5
 
 [node name="PanelContainer" type="PanelContainer" parent="HBoxContainer"]
 margin_left = 4.0
-margin_right = 156.0
-margin_bottom = 122.0
+margin_right = 171.0
+margin_bottom = 145.0
 size_flags_vertical = 0
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/PanelContainer"]
 margin_left = 7.0
 margin_top = 7.0
-margin_right = 145.0
-margin_bottom = 115.0
+margin_right = 160.0
+margin_bottom = 138.0
 size_flags_vertical = 0
 
 [node name="Label" type="Label" parent="HBoxContainer/PanelContainer/VBoxContainer"]
-margin_right = 138.0
+margin_right = 153.0
 margin_bottom = 19.0
 text = "select yourself"
 
 [node name="OptionButton" type="OptionButton" parent="HBoxContainer/PanelContainer/VBoxContainer"]
 margin_top = 23.0
-margin_right = 138.0
+margin_right = 153.0
 margin_bottom = 48.0
 
 [node name="UsingFill" type="CheckBox" parent="HBoxContainer/PanelContainer/VBoxContainer"]
 margin_top = 52.0
-margin_right = 138.0
+margin_right = 153.0
 margin_bottom = 79.0
 text = "Kera Moment?"
 
 [node name="Button" type="Button" parent="HBoxContainer/PanelContainer/VBoxContainer"]
 margin_top = 83.0
-margin_right = 138.0
+margin_right = 153.0
 margin_bottom = 108.0
 text = "generate bingo"
+
+[node name="Fluffles Counter" type="Label" parent="HBoxContainer/PanelContainer/VBoxContainer"]
+margin_top = 112.0
+margin_right = 153.0
+margin_bottom = 131.0
+text = "fluffles count: 0"
+
+[node name="JailBackground" type="Sprite" parent="."]
+position = Vector2( 1032, 522 )
+texture = ExtResource( 4 )
+
+[node name="RatJail" parent="." instance=ExtResource( 3 )]
+position = Vector2( 1032, 522 )
+
+[node name="StaticBody2D" type="StaticBody2D" parent="RatJail"]
+position = Vector2( -421, -135 )
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="RatJail/StaticBody2D"]
+position = Vector2( 948, 181 )
+shape = SubResource( 1 )
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RatJail/StaticBody2D"]
+position = Vector2( 410, 490 )
+shape = SubResource( 1 )
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="RatJail/StaticBody2D"]
+position = Vector2( -106, 176 )
+shape = SubResource( 1 )
+
+[node name="CollisionShape2D4" type="CollisionShape2D" parent="RatJail/StaticBody2D"]
+position = Vector2( 414, -119 )
+shape = SubResource( 1 )

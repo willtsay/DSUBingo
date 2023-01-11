@@ -22,15 +22,25 @@ public class Bingo : Container
     OptionButton _optionButton;
     CheckBox _usingFillButton;
 
+
+
+    float _speedMultiplier = 1.3f;
+    int _timesWon = 0;
     // packed scenes
     PackedScene _ratJammy;
+    PackedScene _shaker;
+    PackedScene _amogusScene;
+
+    int _flufflesCount;
+
+
 
     // jammy rain
-
     float rainDelay = 0.3f;
     float timeUntilRain = 0;
 
-
+    [Signal]
+    public delegate void RemoveAmogus();
 
     [Signal]
     public delegate void NotWin();
@@ -43,6 +53,9 @@ public class Bingo : Container
     RandomNumberGenerator _fRng;
     string _mainExclude;
     private List<string> _freeSpaceEntries;
+    private Label _flufflesCounter;
+    private Sprite _jailBG;
+
 
     public override void _Ready()
     {
@@ -55,10 +68,16 @@ public class Bingo : Container
         _gc = GetNode<GridContainer>("HBoxContainer/GridContainer");
         _usingFillButton = GetNode<CheckBox>("HBoxContainer/PanelContainer/VBoxContainer/UsingFill");
         _generateButton = GetNode<Button>("HBoxContainer/PanelContainer/VBoxContainer/Button");
+        _flufflesCounter = GetNode<Label>("HBoxContainer/PanelContainer/VBoxContainer/Fluffles Counter");
         _generateButton.Connect("pressed", this, "GenerateBingo");
-
+        
         _ratJammy = ResourceLoader.Load<PackedScene>("res://RatJammy.tscn");
+        _shaker = ResourceLoader.Load<PackedScene>("res://SpriteStuff/Shaker.tscn");
+        _amogusScene = ResourceLoader.Load<PackedScene>("res://SpriteStuff/amogus.tscn");
 
+        _jailBG = GetNode<Sprite>("JailBackground");
+        _jailBG.ZIndex = -2;
+        _flufflesCount = 0;
         // generate dummy slots in the gridcontainer
         MakeEmptyBingoBoard();
         PopulateOptionButton();
@@ -94,6 +113,7 @@ public class Bingo : Container
             _bingoLabels.Add(newLabel);
             _bingoButtons.Add(newButton);
             _gc.AddChild(newButton);
+            newButton.Connect("pressed", this, nameof(TrySpawnFluffles));
         }
         
         // make win condition checker;
@@ -120,8 +140,31 @@ public class Bingo : Container
         }
     }
 
+    private void TrySpawnFluffles()
+    {
+        var roll = _rng.Next(0, 100);
+        if (roll < 20)
+        {
+            var rat = _shaker.Instance<Shaker>();
+            this.AddChild(rat);
+            AddToFlufflesCounter(1);
+            if (roll == 0)
+            {
+                rat.UseRainbow();
+                AddToFlufflesCounter(99);
+            }
+        }
+    }
+
+    private void AddToFlufflesCounter(int amount)
+    {
+        _flufflesCount += amount;
+        _flufflesCounter.Text = "fluffles count: " + _flufflesCount;
+    }
+
     private void CheckWinCondition()
     {
+        _timesWon = 0;
         bool _SecretWinChecker = true;
         bool _alreadyWon = false;
         foreach (var btnList in _winConditionChecker)
@@ -132,9 +175,13 @@ public class Bingo : Container
                 isWin = isWin && btn.Pressed;
                 _SecretWinChecker = _SecretWinChecker && btn.Pressed;
             }
-            if (isWin && !_alreadyWon)
+            if (isWin)
             {
-                _alreadyWon = true;
+                _timesWon++;
+                if (!_alreadyWon)
+                {
+                    _alreadyWon = true;
+                }
             }
         }
         if (!_alreadyWon)
@@ -176,13 +223,15 @@ public class Bingo : Container
         RatJammy newRatJammy = (RatJammy)_ratJammy.Instance();
         newRatJammy.Position += new Vector2(i * 128 + _rng.Next(-100, 100), 0);
         newRatJammy.Speed += _rng.Next(-50, 150);
-
+        
         // as long as the direction is "down and to the right" 
         // a 45 degree angle is 1,1 so like i guess i can just do a random + random and then normalize the direction
         var dir = new Vector2(_fRng.Randf(), _fRng.Randf());
         newRatJammy.direction = dir.Normalized();
         this.Connect("NotWin", newRatJammy, "despawn");
         AnimatedSprite sprite = (AnimatedSprite)newRatJammy.GetChild(0);
+
+        sprite.SpeedScale = (float) Math.Pow(_speedMultiplier, _timesWon - 1);
         if (_SecretWin)
         {
             sprite.Play("ToxicSpin");
@@ -226,8 +275,14 @@ public class Bingo : Container
 
     private void GenerateBingo()
     {
+        this.EmitSignal(nameof(RemoveAmogus));
         _SimpleWin = false;
         _SecretWin = false;
+
+        //resets the fluffles count
+        _flufflesCount = 0;
+        AddToFlufflesCounter(0);
+
         List<KeyValuePair<string, List<string>>> allowedEntries = null;
 
         // remove jinju specific OR kera specific from the pool.
@@ -266,8 +321,25 @@ public class Bingo : Container
             {
                 if (i != 12)
                 {
-                    _bingoLabels[i].Text = listEntries[entryIdx];
-                    Button parentButton = (Button) _bingoLabels[i].GetParent();
+                    Button parentButton = (Button)_bingoLabels[i].GetParent();
+                    if (parentButton.IsConnected("pressed", this, nameof(KillAmogus))){ 
+                        parentButton.Disconnect("pressed", this, nameof(KillAmogus));
+                    }
+
+                    if (listEntries[entryIdx] == "amogus")
+                    {
+                        _bingoLabels[i].Text = "";
+                        var amogusInstance = _amogusScene.Instance<AnimatedSprite>();
+                        _bingoLabels[i].AddChild(amogusInstance);
+                        GD.Print("amongusss");
+                        amogusInstance.Play("amogus");
+                        parentButton.Connect("pressed", this, nameof(KillAmogus), new Godot.Collections.Array { amogusInstance } );
+                        this.Connect("RemoveAmogus", amogusInstance, "queue_free");
+                    } 
+                    else
+                    {
+                        _bingoLabels[i].Text = listEntries[entryIdx];
+                    }
                     parentButton.Pressed = false;
                     entryIdx++;
                 } else
@@ -278,6 +350,17 @@ public class Bingo : Container
 
         }
 
+    }
+
+    private void KillAmogus(AnimatedSprite amogus)
+    {
+        if (amogus.Animation == "dead")
+        {
+            amogus.Play("amogus");
+        } else
+        {
+            amogus.Play("dead");
+        }
     }
 
     // make sure this matches the csv u plop up.. test commas i guess. 
