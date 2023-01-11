@@ -7,7 +7,7 @@ public class Shaker : KinematicBody2D
     // Declare member variables here. Examples:
     // private int a = 2;
     // private string b = "text";
-    private float _scaleSpeed = 0.01f;
+    private float _scaleSpeed = 0.008f;
     private float time = 0;
     AnimatedSprite _sprite;
     private bool _spawning;
@@ -47,12 +47,12 @@ public class Shaker : KinematicBody2D
     {
         if (_spawning) {
             time += delta * _scaleSpeed;
-            this.Scale = this.Scale.LinearInterpolate(new Vector2(10, 10), time);
-            _sprite.SpeedScale += .5f * delta;
+            this.Scale = this.Scale.LinearInterpolate(new Vector2(4, 4), time);
+            _sprite.SpeedScale += .3f * delta;
 
-            if (this.Scale.x >= 5)
+            if (this.Scale.x >= 2)
             {
-                this.Modulate = new Color(this.Modulate.r, this.Modulate.g, this.Modulate.b, this.Modulate.a - .3f * delta);
+                this.Modulate = new Color(this.Modulate.r, this.Modulate.g, this.Modulate.b, this.Modulate.a - .5f * delta);
 
             }
             if (this.Modulate.a <= 0)
